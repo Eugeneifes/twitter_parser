@@ -6,9 +6,8 @@ __author__ = 'Eugene'
 import tweepy
 import csv
 import hashlib
-import sys
-import pprint
 import os.path
+from datetime import datetime
 
 
 consumer_key = ""
@@ -20,7 +19,9 @@ auth = tweepy.AppAuthHandler(consumer_key, consumer_secret)
 api = tweepy.API(auth)
 
 maxTweets = 10000000
-tweetCount = 0
+
+happy = [":)", ":D", ":-)"]
+sad = [":(", ":-("]
 
 
 def load_hashes():
@@ -33,14 +34,19 @@ def load_hashes():
     return hash_set
 
 
-def get_min_id():
+def get_last_state():
     with open("training_set.csv", "r") as csvfile:
-        min = 1000000000000000000000000000
-        reader = csv.DictReader(csvfile)
-        for line in reader:
-            if int(line["id"])<min:
-                min = int(line["id"])
-        return min
+        last = csvfile.readlines()[-2]
+        last = last.split(",")
+        min = int(last[0])
+        date = last[1]
+        return (min, date)
+
+def date_converter(date):
+
+    d = datetime.strptime(date, '%a %b %d %H:%M:%S %z %Y')
+    d = d.strftime('%Y-%m-%d %H:%M')
+    return d
 
 
 def presetting():
@@ -48,16 +54,25 @@ def presetting():
     if os.path.isfile("training_set.csv"):
         hash_set = load_hashes()
         tweetCount = len(hash_set)
-        last_id = get_min_id()
+        last_id, last_date = get_last_state()
+
+        print("\n")
+        print("Presetting:")
+        print("Tweets in database: %d" % tweetCount)
+        print("Last id: %s" % last_id)
+        print("Last date: %s" % last_date)
+        print("\n")
+
     else:
         print("no database")
         hash_set = []
         with open("training_set.csv", "w") as csvfile:
-            fieldnames = ["id", "text", "hash", "polarity"]
+            fieldnames = ["id", "date", "text", "hash", "polarity"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             tweetCount = 0
             last_id = None
+
     return (tweetCount, last_id, hash_set)
 
 
@@ -65,12 +80,6 @@ def presetting():
 def get_tweets(query):
 
     tweetCount, max_id, hash_set = presetting()
-
-    print("\n")
-    print("Presetting:")
-    print("Tweets in database: %d" % tweetCount)
-    print("Last id: %s" % max_id)
-    print("\n")
 
     #While not enough tweets in database
     while tweetCount < maxTweets:
@@ -81,16 +90,16 @@ def get_tweets(query):
         if max_id is None:
             tweets = api.search(q=query, count=100, lang="en")
         else:
-            tweets = api.search(q=query, count=100, lang="en", max_id=str(max_id-1))
+            tweets = api.search(q=query, count=100, lang="en", max_id=str(int(max_id)-1))
         print("%s tweets in queue" % len(tweets))
 
-        if len(tweets)==0:
+        if len(tweets) == 0:
             print("No tweets for such query")
             break
 
 
         with open("training_set.csv", "a") as csvfile:
-            fieldnames = ["id", "text", "hash", "polarity"]
+            fieldnames = ["id", "date", "text", "hash", "polarity"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             for tweet in tweets:
 
@@ -104,27 +113,32 @@ def get_tweets(query):
                     data["id"] = tweet._json["id"]
                     data["text"] = tweet._json["text"]
                     data["hash"] = hash
-                    if ":)" in data["text"]:
+                    data["date"] = date_converter(tweet._json["created_at"])
+
+                    if any(smile in data["text"] for smile in happy):
                         data["polarity"] = "positive"
-                    elif ":(" in data["text"]:
+                    elif any(smile in data["text"] for smile in sad):
                         data["polarity"] = "negative"
+                    else:
+                        data["polarity"] = "neutral"
 
                     try:
                         writer.writerow(data)
+                        tweetCount += 1
                     except:
                         undecodable += 1
-
-            max_id = tweets[-1].id
 
             print("\n")
             print("Statistics per step:")
             print("%d duplicates" % duplicates)
             print("%d undecodable" % undecodable)
             print("%d new tweets" % (len(tweets)-duplicates-undecodable))
+            print("ongoing tweet count: %d" % tweetCount)
             print("\n")
 
             if (len(tweets)-duplicates-undecodable) == 0:
                 print("Can't get any new tweets")
                 break
+
 
 get_tweets(":) OR :(")
