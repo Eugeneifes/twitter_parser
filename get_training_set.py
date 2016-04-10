@@ -11,10 +11,10 @@ import pprint
 import os.path
 
 
-consumer_key = "Ua4agkQ0Iflp0snjgNwtLUpe0"
-consumer_secret = "eUYfxugm5G3NmbygZB0V90WlKVv3K5r90aUwys8ktjUmgAgLP9"
-access_token = "715816338103656448-uN1IjZ7rLHxzbww3f9LAmEEoKztQqva"
-access_token_secret = "3dGDI5jhUOI1w8nhfBOnhhE1YNgKAmF2CZGVdSt2U5ov0"
+consumer_key = ""
+consumer_secret = ""
+access_token = ""
+access_token_secret = ""
 
 auth = tweepy.AppAuthHandler(consumer_key, consumer_secret)
 api = tweepy.API(auth)
