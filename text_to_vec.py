@@ -4,7 +4,7 @@ __author__ = 'Eugene'
 import csv
 import hashlib
 import collections
-
+import string
 
 def Statistics():
     with open("training_set.csv", "r") as csvfile:
@@ -16,16 +16,17 @@ def Statistics():
         for line in reader:
 
             if line["polarity"] == "positive":
-                count_pos+=1
+                count_pos += 1
             elif line["polarity"] == "negative":
-                count_neg+=1
+                count_neg += 1
             else:
-                count_neu+=1
+                count_neu += 1
 
-
-        print("Negative %d" % count_neg)
-        print("Positive %d" % count_pos)
-        print("Neutral %d" % count_neu)
+        total = count_neg+count_pos+count_neu
+        print("Total records %d" % total)
+        print("Negative %d: %f %%" % (count_neg, (float(count_neg)/total)*100))
+        print("Positive %d: %f %%" % (count_pos, (float(count_pos)/total)*100))
+        print("Neutral %d: %f %%" % (count_neu, (float(count_neu)/total)*100))
 
 
 def most_imp(dict):
@@ -36,7 +37,6 @@ def most_imp(dict):
         else:
             importance[str(ngram)] = 1
     return importance
-
 
 
 def sorted(mass):
@@ -60,26 +60,53 @@ def get_ngram(text, len):
             count = 0
     return (dict)
 
+def transform(text):
+
+    text = text.lower()
+    text = text.split()
+
+    for word in text:
+        if word == "rt":
+            text.remove(word)
+
+    for word in text:
+        if "@" in word:
+            text.remove(word)
+
+    for word in text:
+        new_word = "".join(ch for ch in word if ch not in string.punctuation)
+        text[text.index(word)] = new_word
+
+    for word in text:
+        if word is "" or '':
+            text.remove(word)
+
+
+    return text
+
 
 
 data_sets = ["positive", "negative", "neutral"]
 
-"""
-for set in data_sets:
-    print("Working with set %s" % set)
-    Learn(set)
-    print("\n")
-"""
 
 for set in data_sets:
-    class_dict = []
+    set_dict = []
     print("Working with set %s" % set)
     with open("training_set.csv", "r") as csvfile:
         reader = csv.DictReader(csvfile)
         for line in reader:
             if line["polarity"] == set:
-                dict = get_ngram(line["text"].split(), 2)
+                print line["text"]
+                text = transform(line["text"])
+                print text
+                print("\n")
+
+                """
+                dict = get_ngram(text.split(), 2)
+                print (dict)
+
                 for ngram in dict:
-                    class_dict.append(ngram)
-        importance = most_imp(class_dict)
+                    set_dict.append(ngram)
+        importance = most_imp(set_dict)
         print sorted(importance)
+        """

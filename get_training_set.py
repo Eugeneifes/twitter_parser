@@ -8,6 +8,12 @@ import csv
 import hashlib
 import os.path
 from datetime import datetime
+from dateutil import parser
+import email.utils
+
+
+
+
 
 
 consumer_key = ""
@@ -36,7 +42,7 @@ def load_hashes():
 
 def get_last_state():
     with open("training_set.csv", "r") as csvfile:
-        last = csvfile.readlines()[-2]
+        last = csvfile.readlines()[1]
         last = last.split(",")
         min = int(last[0])
         date = last[1]
@@ -44,9 +50,9 @@ def get_last_state():
 
 def date_converter(date):
 
-    d = datetime.strptime(date, '%a %b %d %H:%M:%S %z %Y')
-    d = d.strftime('%Y-%m-%d %H:%M')
-    return d
+    date_tz = email.utils.parsedate_tz(date)
+    mydate=datetime(*date_tz[:6])
+    return mydate
 
 
 def presetting():
