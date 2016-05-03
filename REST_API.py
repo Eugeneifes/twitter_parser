@@ -46,9 +46,8 @@ def get_last_state():
 
 #конвертируем дату в удобочитаемый вид
 def date_converter(date):
-
-    d = datetime.strptime(date, '%a %b %d %H:%M:%S %z %Y')
-    d = d.strftime('%Y-%m-%d %H:%M')
+    d = time.strptime(date, '%a %b %d %H:%M:%S +0000 %Y')
+    d = time.strftime('%Y-%m-%d %H:%M:%S', d)
     return d
 
 
