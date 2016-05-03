@@ -5,21 +5,29 @@ import tweepy
 import csv
 import hashlib
 import os.path
-from datetime import datetime
-
+import time
+import urllib
+from text_to_vec import transform
 
 consumer_key = ""
 consumer_secret = ""
-access_token = ""
-access_token_secret = ""
+
 
 auth = tweepy.AppAuthHandler(consumer_key, consumer_secret)
 api = tweepy.API(auth)
 
 maxTweets = 10000000
 
-happy = [":)", ":D", ":-)"]
-sad = [":(", ":-("]
+pos_url='http://www.unc.edu/~ncaren/haphazard/positive.txt'
+neg_url='http://www.unc.edu/~ncaren/haphazard/negative.txt'
+
+urllib.urlretrieve(pos_url, 'positive.txt')
+urllib.urlretrieve(neg_url, 'negative.txt')
+
+pos_sent = open("positive.txt").read()
+positive_words = pos_sent.split('\n')
+neg_sent = open("negative.txt").read()
+negative_words = neg_sent.split('\n')
 
 
 #Загрузка последнего состояния из БД
@@ -90,7 +98,14 @@ def put_to_db(tweets, hash_set, duplicates, undecodable, tweetCount):
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             for tweet in tweets:
 
-                hash = hashlib.md5(tweet._json["text"].encode("utf-8")).hexdigest()
+                text = tweet._json["text"].split()
+                if text[0]=='RT' and "@" in text[1]:
+                    del text[:2]
+                    final_text = " ".join(text)
+                else:
+                    final_text = " ".join(text)
+
+                hash = hashlib.md5(final_text.encode("utf-8")).hexdigest()
                 if hash in hash_set:
                     duplicates += 1
                     continue
@@ -102,18 +117,33 @@ def put_to_db(tweets, hash_set, duplicates, undecodable, tweetCount):
                     data["hash"] = hash
                     data["date"] = date_converter(tweet._json["created_at"])
 
-                    if any(smile in data["text"] for smile in happy):
-                        data["polarity"] = "positive"
-                    elif any(smile in data["text"] for smile in sad):
-                        data["polarity"] = "negative"
-                    else:
-                        data["polarity"] = "neutral"
+                    text = transform(data["text"])
+                    positive = 0
+                    negative = 0
 
-                    try:
-                        writer.writerow(data)
-                        tweetCount += 1
-                    except:
-                        undecodable += 1
+                    for word in text:
+                        if word in positive_words:
+                            positive += 1
+                        elif word in negative_words:
+                            negative += 1
+
+                    if positive == 0 and negative == 0 or positive == negative:
+                        data["polarity"] = "neutral"
+                    elif positive > negative:
+                        data["polarity"] = "positive"
+                    else:
+                        data["polarity"] = "negative"
+
+
+                    if data["polarity"] in ["positive", "negative"]:
+                        try:
+                            writer.writerow(data)
+                            tweetCount += 1
+                        except:
+                            undecodable += 1
+                    else:
+                        print("unrecognized polarity")
+
     return (duplicates, undecodable, tweetCount)
 
 
@@ -151,8 +181,8 @@ def get_tweets(query):
 
         if (len(tweets)-duplicates-undecodable) == 0:
             print("Can't get any new tweets")
-            
+
         minim = tweets[len(tweets)-1]._json["id"]
 
 
-get_tweets(":) OR :(")
+get_tweets("weather")
